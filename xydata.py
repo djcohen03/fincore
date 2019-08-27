@@ -115,6 +115,16 @@ class XYData(object):
         self.data = self.getbuckets()
         self.dates = sorted(self.data.keys())
 
+    @property
+    def features(self):
+        '''
+        '''
+        if self.dates:
+            date = self.dates[0]
+            return self.data[date].features
+        else:
+            raise Exception('No Feature Data Available')
+
     def getsplit(self, train=0.65):
         ''' Get's an aggregated train/test split of input and output data across
             a randomized selection of dates
