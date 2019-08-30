@@ -9,7 +9,13 @@ from sqlalchemy.orm import relationship
 from dateutil.relativedelta import relativedelta
 from base import Base
 from session import session, engine
-from api_key import API_KEY
+
+# Try to import the API Key:
+try:
+    from api_key import API_KEY
+except ImportError:
+    API_KEY = None
+    print 'Warning: No AlphaVantage API Key Provided, Data Fetching Disabled...'
 
 
 class Tradable(Base):
