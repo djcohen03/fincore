@@ -37,7 +37,10 @@ class Deduplicate(object):
         for tradable in tradables:
             start = time.time()
 
-            prices = tradable.prices()
+            # When de-deuplicating, only check the past two weeks:
+            _end = datetime.date.today()
+            _start = _end - datetime.timedelta(days=14)
+            prices = tradable.pricerange(_start, _end)
 
             times = prices[['id', 'time']]
             seen = set()

@@ -87,23 +87,29 @@ class Tradable(Base):
             Optionally filter by date
         '''
         if date:
-            query = '''
-                SELECT * FROM price WHERE request_id IN (
-                    SELECT id FROM price_request WHERE tradable_id=%s
-                ) AND (
-                    price.time >= '%s' AND price.time < '%s'
-                );
-            ''' % (
-                self.id,
-                date.strftime('%Y-%m-%d 00:00:00.000000'),
-                date.strftime('%Y-%m-%d 23:59:59.999999')
-            )
+            # Get price history for a particular date
+            return self.pricerange(date, date)
         else:
-            query = '''
-                SELECT * FROM price WHERE request_id IN (
-                    SELECT id FROM price_request WHERE tradable_id=%s
-                );
-            ''' % self.id
+            # Get full price history
+            start = datetime.date(2000, 1, 1)
+            end = datetime.date.today()
+            return self.pricerange(start, end)
+
+    def pricerange(self, start, end):
+        ''' Get a Pandas DataFrame of this tradable's price history between the
+            given date range
+        '''
+        query = '''
+            SELECT * FROM price WHERE request_id IN (
+                SELECT id FROM price_request WHERE tradable_id=%s
+            ) AND (
+                price.time >= '%s' AND price.time < '%s'
+            );
+        ''' % (
+            self.id,
+            start.strftime('%Y-%m-%d 00:00:00.000000'),
+            end.strftime('%Y-%m-%d 23:59:59.999999')
+        )
 
         prices = pd.read_sql(query, engine).sort_values('time')
         prices['time'] = pd.to_datetime(prices['time'])

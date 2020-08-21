@@ -1,7 +1,4 @@
-''' Seed Data Script: Tradables
-'''
-
-from models import *
+from db.models import *
 
 if __name__ == '__main__':
     tradables = [
