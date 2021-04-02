@@ -29,112 +29,70 @@ class Tradable(Base):
     price_requests = relationship('PriceRequest')
     technical_requests = relationship('TechnicalRequest')
 
-    def data(self):
-        ''' Load a pandas DataFrame that contains a time series of feature data
-            for the given tradable
+    def getreturns(self):
         '''
-        start = time.time()
-        data = self.returns()
-
-        # Add in some Historical Volatility Features:
-        periods = [30, 60]
-        vols = { p: [None] * len(data) for p in periods }
-        for i in range(len(data)):
-            for p in periods:
-                if p <= i:
-                    window = data[(i - p): i]
-                    if not (window.time.iloc[-1] - window.time.iloc[0]).days:
-                        vols[p][i] = window.close.std()
-        for p in periods:
-            key = "%sm Vol" % p
-            data[key] = vols[p]
-
-        # We should remove the rows with None values, for now, for data analysis:
-        data = data.dropna()
-
-        # Load in Daily Techincal Indicator Data:
-        technicals = self.technicals()
-        technicaldata = {key: [None] * len(data) for key in technicals.columns}
-        for i, ts in enumerate(data.time):
-            date = ts.date()
-            if date in technicals.index:
-                row = technicals.loc[date]
-                for technical in technicaldata.keys():
-                    technicaldata[technical][i] = row[technical]
-        for technical, values in technicaldata.iteritems():
-            data[technical] = values
-
-        print "Loaded All Return and Feature Time Series Data For %s in %.2fs" % (self, time.time() - start)
-        return data
-
-    def returns(self, date=None):
-        prices = self.prices(date=date)
-        returns = []
-        for i in range(1, len(prices)):
-            close = prices.iloc[i - 1]['close']
-            row = prices.iloc[i]
-            returns.append({
-                'open': row.open / close - 1.,
-                'close': row.close / close - 1.,
-                'high': row.high / close - 1.,
-                'low': row.low / close - 1.,
-                'time': row.time
-            })
-        return pd.DataFrame(returns)
-
-    def prices(self, date=None):
-        ''' Get a Pandas DataFrame of this tradable's price history
-            Optionally filter by date
         '''
-        if date:
-            # Get price history for a particular date
-            return self.pricerange(date, date)
-        else:
-            # Get full price history
-            start = datetime.date(2000, 1, 1)
-            end = datetime.date.today()
-            return self.pricerange(start, end)
+        # Get price history:
+        prices = self.getprices()
+
+        # Compute price returns based on previous close:
+        prices['price'] = prices.close.copy()
+        prices['prev'] = prices.close.shift(1)
+        prices['open'] = (prices.open / prices.prev - 1.) * 100.
+        prices['high'] = (prices.high / prices.prev - 1.) * 100.
+        prices['close'] = (prices.close / prices.prev - 1.) * 100.
+        prices['low'] = (prices.low / prices.prev - 1.) * 100.
+
+        # Define returns dataframe:
+        returns = prices[['open', 'high', 'low', 'close', 'time', 'date', 'volume', 'price']].fillna(0.)
+
+        return returns
 
     def pricerange(self, start, end):
-        ''' Get a Pandas DataFrame of this tradable's price history between the
-            given date range
+        ''' Get prices in the given date range
         '''
-        query = '''
-            SELECT * FROM price WHERE request_id IN (
-                SELECT id FROM price_request WHERE tradable_id=%s
-            ) AND (
-                price.time >= '%s' AND price.time < '%s'
-            );
-        ''' % (
-            self.id,
-            start.strftime('%Y-%m-%d 00:00:00.000000'),
-            end.strftime('%Y-%m-%d 23:59:59.999999')
-        )
+        prices = self.getprices()
+        m1 = prices.date <= end
+        m2 = prices.date >= start
+        prices = prices[m1 & m2]
 
-        prices = pd.read_sql(query, engine).sort_values('time')
-        prices['time'] = pd.to_datetime(prices['time'])
         return prices
 
-
-    def technicals(self):
-        ''' Get a pandas DataFrame of daily techincal indicator values
+    def pricedates(self):
+        ''' Get available price dates
         '''
         query = '''
-            SELECT * FROM technical_indicator_value WHERE request_id IN (
-                SELECT id FROM technical_request where tradable_id=%s
+            SELECT DISTINCT date(time) FROM price
+            WHERE request_id IN (
+                SELECT price_request.id FROM tradable
+                INNER JOIN price_request
+                ON price_request.tradable_id = tradable.id
+                WHERE tradable.id=%s
+            ) ORDER BY date;
+        ''' % self.id
+        results = pd.read_sql(query, engine)
+        return results.date.tolist()
+
+    def getprices(self):
+        ''' Get all prices
+        '''
+        print 'Downloading Prices For %s...' % self.name
+        start = time.time()
+        query = '''
+            SELECT open, high, low, close, time, date(time), volume
+            FROM price
+            WHERE request_id IN (
+                SELECT id FROM price_request WHERE tradable_id=%s
             );
         ''' % self.id
-        rawdata = pd.read_sql(query, engine)
+        prices = pd.read_sql(query, engine).sort_values('time')
+        print 'Downloaded %s Prices For %s In %.2fs' % (prices.shape[0], self.name, time.time() - start)
 
-        data = {date: {} for date in set(rawdata.date)}
-        for i in range(len(rawdata)):
-            row = rawdata.iloc[i]
-            for key, value in json.loads(row['values']).iteritems():
-                # RMK: This overwrites other n-day metrics, since they are
-                # all stored as 'SMA', as opposed to, eg. SMA-5
-                data[row.date][key] = value
-
-        return pd.DataFrame(data).transpose()
+        # Separate out date and time columns:
+        prices.index = prices.time.copy()
+        prices['date'] = prices.time.map(lambda x: x.date())
+        prices['time'] = prices.time.map(lambda x: x.time())
+        return prices
 
     def __repr__(self):
         return self.name
@@ -155,11 +113,9 @@ class Price(Base):
     request = relationship('PriceRequest')
 
     def __repr__(self):
-        return "%s @ %s: %s" % (
-            self.request.tradable.name,
-            self.time,
-            float(self.close)
-        )
+        '''
+        '''
+        return '<%s|%s|%s>' % (self.request.tradable, self.time, float(self.close))
 
 class TechnicalIndicator(Base):
     __tablename__ = 'technical_indicator'
@@ -217,8 +173,7 @@ class TechnicalIndicatorValue(Base):
             self.values
         )
 
-
-class APIRequest():
+class APIRequest(object):
     sent = Column(Boolean, default=False)
     time_sent = Column(DateTime)
     meta = Column(String)

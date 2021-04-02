@@ -14,16 +14,6 @@ These steps should get your local financial database up and running, and should 
 
 ## Example Usage
 ```
-from db.models import Tradable, session
-spy = session.query(Tradable).filter_by(name='SPY').first()
-prices = spy.prices()
-
-#        open     close    low     high    time                       volume
-# 58383  290.320  290.430  290.32  290.430 2019-04-22 15:54:00+00:00  384667.0
-# 58773  290.430  290.360  290.31  290.435 2019-04-22 15:55:00+00:00  347707.0
-# 58361  290.370  290.335  290.32  290.405 2019-04-22 15:56:00+00:00  322169.0
-# 58575  290.330  290.240  290.23  290.340 2019-04-22 15:57:00+00:00  238364.0
-# ...
-
+Todo...
 
 ```
