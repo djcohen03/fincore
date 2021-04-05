@@ -83,7 +83,7 @@ class XYData(object):
         returns = returns[~(daydiffs > zerodays)]
 
         # Add in the predictive variable:
-        returns['forecast'] = returns.price.pct_change(periods=-self.forecast)
+        returns['forecast'] = returns.price.pct_change(periods=self.forecast).shift(periods=-self.forecast)
 
         # Drop the last N periods in the day based on our prediction window:
         daydiffs = returns.date.diff(periods=-self.forecast)
