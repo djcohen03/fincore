@@ -39,6 +39,11 @@ class TiingoClient(object):
         prices.index = prices.timestamp
         prices.sort_index(inplace=True)
 
+        # Filter out future data points:
+        now = datetime.datetime.now() + datetime.timedelta(hours=1)
+        infuture = prices.timestamp.map(lambda x: x > now)
+        prices = prices[~infuture]
+
         # Convert to a returns dataframe:
         prices['date'] = prices.timestamp.map(lambda x: x.date())
         prices['time'] = prices.timestamp.map(lambda x: x.time())
@@ -58,3 +63,4 @@ class TiingoClient(object):
 
 if __name__ == '__main__':
     client = TiingoClient('d5b3bc41258b712303dcce5b484bee731facfdb6')
+    print client.getlive('AAPL')
