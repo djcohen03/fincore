@@ -117,11 +117,11 @@ class LiveXYData(object):
         except ImportError:
             raise Exception('No Tiingo API Key Provided')
 
-    def livestream(self):
+    def livestream(self, buffer=0.0):
         '''
         '''
         while True:
-            sleeptime = self._timetonext()
+            sleeptime = self._timetonext(buffer=buffer)
             time.sleep(sleeptime)
             try:
                 print 'Fetching Live Data...'
@@ -130,18 +130,31 @@ class LiveXYData(object):
                 print 'An Exception Occurred Getting Live Data Point: "%s" (Skipping...)' % e
                 print traceback.format_exc()
 
-    def _timetonext(self):
+    def _timetonext(self, buffer=0.0):
         ''' Time to the next minute marker
         '''
         now = datetime.datetime.now()
         seconds = 60 - now.second
         microseconds = (10e5 - now.microsecond) / 10e5
-        return seconds + microseconds
+        return seconds + microseconds + buffer
 
-    def getlive(self):
+    def getlive(self, attempt=1):
         '''
         '''
         returns = self.client.getlive(self.symbol)
+
+        # Check to see if we got updated prices for the most recent minute. If
+        # not, we try again, up to three times:
+        if (returns[returns.columns[:4]].iloc[-1] == 0.0).all():
+            maxtries = 5
+            if attempt < maxtries:
+                sleeptime = 2 ** attempt
+                attempt += 1
+                print 'Warning: Re-Fetching Live Data (Attempt %s, Sleeping %ss)...' % (attempt, sleeptime)
+                time.sleep(sleeptime)
+                return self.getlive(attempt=attempt)
+            else:
+                raise Exception('Failed To Get Current Data After %s Tries' % maxtries)
 
         # Add weekday, hour, minute dataset columns:
         mappers = [
@@ -180,7 +193,8 @@ class LiveXYData(object):
         return LivePoint(
             inputs=inputs,
             timestamp=timestamp,
-            features=features
+            features=features,
+            returns=returns,
         )
 
 if __name__ == '__main__':
