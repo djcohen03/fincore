@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 from db.models import *
 from splits import Splits
+from tiingo import TiingoClient
+from livepoint import LivePoint
 
 # Set pandas dataframe column widths:
 pd.set_option('display.expand_frame_repr', False)
@@ -20,7 +22,6 @@ class XYData(object):
         self.forecast = forecast
 
         self.tradable = session.query(Tradable).filter_by(name=symbol).first()
-        self.vix = session.query(Tradable).filter_by(name='VIX').first()
 
         # Download the dataset:
         self.returns = self._loadreturns()
@@ -98,5 +99,92 @@ class XYData(object):
         return returns
 
 
+class LiveXYData(object):
+    def __init__(self, symbol, lookback=30):
+        '''
+        '''
+        self.symbol = symbol
+        self.lookback = lookback
+        self._token = self._apikey()
+        self.client = TiingoClient(self._token)
+
+    def _apikey(self):
+        '''
+        '''
+        try:
+            from api_key import TIINGO
+            return TIINGO
+        except ImportError:
+            raise Exception('No Tiingo API Key Provided')
+
+    def livestream(self):
+        '''
+        '''
+        while True:
+            sleeptime = self._timetonext()
+            time.sleep(sleeptime)
+            try:
+                yield self.getlive()
+            except Exception as e:
+                print 'An Exception Occurred Getting Live Data Point: "%s" (Skipping...)' % e
+                print traceback.format_exc()
+
+    def _timetonext(self):
+        ''' Time to the next minute marker
+        '''
+        now = datetime.datetime.now()
+        seconds = 60 - now.second
+        microseconds = (10e5 - now.microsecond) / 10e5
+        return seconds + microseconds
+
+    def getlive(self):
+        '''
+        '''
+        returns = self.client.getlive(self.symbol)
+
+        # Add weekday, hour, minute dataset columns:
+        mappers = [
+            ('weekday', lambda row: row.date.weekday()),
+            ('hour', lambda row: row.time.hour),
+            ('minute', lambda row: row.time.minute),
+        ]
+        for key, mapper in mappers:
+            returns[key] = returns.apply(mapper, axis=1)
+
+        # Add in the high/low range
+        returns['range'] = returns.high - returns.low
+
+        # Add in the percent change with all n-period lags based on the
+        # self.lookback parameter:
+        for periods in range(2, self.lookback):
+            returns['change.%s' % periods] = returns.price.pct_change(periods=periods)
+
+
+        # Drop the first N periods in the day based on our allowed lookback window:
+        zerodays = datetime.timedelta(days=0)
+        daydiffs = returns.date.diff(periods=self.lookback)
+        returns = returns[~(daydiffs > zerodays)]
+
+        # Drop NaN values that should apear at head & tail of dataframe:
+        returns.dropna(inplace=True)
+
+        # Drop any non-stationary columns:
+        returns = returns.drop(['price', 'date', 'time'], axis=1)
+
+        #
+        features = list(returns.columns)
+        inputs = np.array(returns.iloc[-1]).reshape((1, len(features)))
+        timestamp = returns.index[-1].to_pydatetime()
+
+        return LivePoint(
+            inputs=inputs,
+            timestamp=timestamp,
+            features=features
+        )
+
 if __name__ == '__main__':
-    data = XYData('AAPL')
+    data = LiveXYData('AAPL')
+
+    for point in data.livestream():
+        print point.inputs
+        print point.timesince
