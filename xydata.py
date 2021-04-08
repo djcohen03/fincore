@@ -124,6 +124,7 @@ class LiveXYData(object):
             sleeptime = self._timetonext()
             time.sleep(sleeptime)
             try:
+                print 'Fetching Live Data...'
                 yield self.getlive()
             except Exception as e:
                 print 'An Exception Occurred Getting Live Data Point: "%s" (Skipping...)' % e
