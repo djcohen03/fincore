@@ -1,11 +1,10 @@
 import time
 import random
-import urllib.request, urllib.parse, urllib.error
 import traceback
 import pandas as pd
 import numpy as np
-from .db.models import *
-from .utils import Splits, TiingoClient, LivePoint
+from db.models import *
+from utils import Splits, TiingoClient, LivePoint
 
 # Set pandas dataframe column widths:
 pd.set_option('display.expand_frame_repr', False)
@@ -110,7 +109,7 @@ class LiveXYData(object):
         '''
         '''
         try:
-            from .api_key import TIINGO
+            from api_key import TIINGO
             return TIINGO
         except ImportError:
             raise Exception('No Tiingo API Key Provided')

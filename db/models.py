@@ -7,12 +7,12 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, \
         Date, Numeric, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from dateutil.relativedelta import relativedelta
-from .base import Base
-from .session import session, engine
+from base import Base
+from session import session, engine
 
 # Try to import the API Key:
 try:
-    from .api_key import API_KEY
+    from api_key import API_KEY
 except ImportError:
     API_KEY = None
     print('Warning: No AlphaVantage API Key Provided, Data Fetching Disabled...')
@@ -211,17 +211,17 @@ class PriceRequest(Base, APIRequest):
         '''
         if self.sent:
             # Only send a request once
-            print(("Request %s already sent" % self.id))
+            print("Request %s already sent" % self.id)
             return
 
         # Send request:
-        print(("Sending Price Request %s" % self))
+        print("Sending Price Request %s" % self)
         result = self._send()
 
         # Read in result:
         if result.get('Information'):
             # An Error Occurred, Request Unscuccessful
-            print(("Price Request %s Unsuccessful: %s" % (self.id, result['Information'])))
+            print("Price Request %s Unsuccessful: %s" % (self.id, result['Information']))
             self.meta = result['Information']
             self.successful = False
             session.commit()
@@ -259,8 +259,8 @@ class PriceRequest(Base, APIRequest):
         try:
             session.bulk_save_objects(prices)
         except:
-            print(("Couldn't save price request %s data:" % self.id))
-            print((traceback.format_exc()))
+            print("Couldn't save price request %s data:" % self.id)
+            print(traceback.format_exc())
             session.rollback()
 
             # Mark as unsuccessful
@@ -306,24 +306,24 @@ class TechnicalRequest(Base, APIRequest):
     def send(self, cutoff=None):
         if self.sent:
             # Only send a request once
-            print(("Request %s already sent" % self.id))
+            print("Request %s already sent" % self.id)
             return
 
         # Send request:
-        print(("Sending Technical Request %s..." % self))
+        print("Sending Technical Request %s..." % self)
         result = self._send()
 
         # Read in result:
         if result.get('Information'):
             # An Error Occurred, Request Unscuccessful
-            print(("Technical Request %s Unsuccessful: %s" % (self.id, result['Information'])))
+            print("Technical Request %s Unsuccessful: %s" % (self.id, result['Information']))
             self.meta = result['Information']
             self.successful = False
             session.commit()
             return
         elif result.get('Error Message'):
             # An Error Occurred, Request Unscuccessful
-            print(("Technical Request %s Unsuccessful: %s" % (self.id, result['Error Message'])))
+            print("Technical Request %s Unsuccessful: %s" % (self.id, result['Error Message']))
             self.meta = result['Error Message']
             self.successful = False
             session.commit()
@@ -341,7 +341,7 @@ class TechnicalRequest(Base, APIRequest):
     def readin_data(self, data, cutoff=None):
         # Loop through data points
         values = []
-        for timestamp, rawdata in data.items():
+        for timestamp, rawdata in data.iteritems():
             try:
                 # We sometimes get a weird ' hh:mm:ss' appended to the string, so
                 # here we make sure that that is removed from the parsed date string:
@@ -354,7 +354,7 @@ class TechnicalRequest(Base, APIRequest):
 
             except Exception as e:
                 raise e
-                print(("Invalid Data Point, Skipping (%s: %s)" % (timestamp, rawdata)))
+                print("Invalid Data Point, Skipping (%s: %s)" % (timestamp, rawdata))
                 continue
 
 
@@ -363,8 +363,8 @@ class TechnicalRequest(Base, APIRequest):
             session.bulk_save_objects(values)
             session.commit()
         except:
-            print(("Couldn't save technical request %s data:" % self.id))
-            print((traceback.format_exc()))
+            print("Couldn't save technical request %s data:" % self.id)
+            print(traceback.format_exc())
             session.rollback()
 
             # Mark as unsuccessful
