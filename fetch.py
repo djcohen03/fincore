@@ -3,7 +3,7 @@ import requests
 import datetime
 import traceback
 from time import sleep
-from db.models import *
+from .db.models import *
 
 
 class CreateRequest(object):
@@ -13,7 +13,7 @@ class CreateRequest(object):
     def price(cls, tradable):
         ''' Create a pricing Request
         '''
-        print "Creating price Request for %s..." % tradable.name
+        print(("Creating price Request for %s..." % tradable.name))
         pricerequest = PriceRequest(tradable_id=tradable.id)
         session.add(pricerequest)
         return pricerequest
@@ -22,7 +22,7 @@ class CreateRequest(object):
     def technical(cls, tradable, technical):
         ''' Create a technical request for the given tradable/technical pair
         '''
-        print "Creating %s technical Request for '%s'..." % (technical, tradable)
+        print(("Creating %s technical Request for '%s'..." % (technical, tradable)))
 
         techrequests = TechnicalRequest(tradable_id=tradable.id, technical_indicator_id=technical.id)
         session.add(techrequests)
@@ -63,9 +63,9 @@ class Deduplicate(object):
                 )
                 session.commit()
 
-                print "Deleted %s Duplicates for %s in %.2fs" % (len(duplicates), tradable, time.time() - start)
+                print(("Deleted %s Duplicates for %s in %.2fs" % (len(duplicates), tradable, time.time() - start)))
             else:
-                print "No Duplicates Found for %s (%.2fs)" % (tradable, time.time() - start)
+                print(("No Duplicates Found for %s (%.2fs)" % (tradable, time.time() - start)))
 
     @classmethod
     def technicals(cls):
@@ -76,7 +76,7 @@ class Deduplicate(object):
 
         for tradable in tradables:
             for technical in technicals:
-                print("Deduplicating %s %s..." % (tradable.name, str(technical)))
+                print(("Deduplicating %s %s..." % (tradable.name, str(technical))))
 
                 # Collect the Indicator values for this Tradable/Techincal Pair:
                 technical_requests = session.query(TechnicalRequest).filter_by(tradable_id=tradable.id, technical_indicator_id=technical.id).all()
@@ -95,13 +95,13 @@ class Deduplicate(object):
                             count += 1
                             session.delete(indicator)
                         else:
-                            print 'WARNING: %s != %s (%s)' % (oldval, newval, indicator.date)
+                            print(('WARNING: %s != %s (%s)' % (oldval, newval, indicator.date)))
                     else:
                         dates[indicator.date] = indicator.values
                 session.commit()
 
                 if count:
-                    print("Found %s duplicates" % count)
+                    print(("Found %s duplicates" % count))
 
 
 class FetchData(object):
@@ -143,26 +143,26 @@ class FetchData(object):
 
         # Loop through requests and send each:
         for request in requests:
-            print 'Sending %s...' % request
+            print(('Sending %s...' % request))
             try:
                 request.send(cutoff=cutoff)
                 session.commit()
 
                 prices = getattr(request, 'prices', [])
                 if prices:
-                    print 'Found %s Prices for %s' % (len(prices), request)
+                    print(('Found %s Prices for %s' % (len(prices), request)))
 
                 values = getattr(request, 'values', [])
                 if values:
-                    print 'Found %s Values for %s' % (len(values), request)
+                    print(('Found %s Values for %s' % (len(values), request)))
 
             except:
-                print "Exception occured for %s:" % request
-                print traceback.format_exc()
+                print(("Exception occured for %s:" % request))
+                print((traceback.format_exc()))
 
             # Alpha Vantage limits the requests to 4 per minute for the free
             # account, so here we sleep
-            print "Sleeping 15s..."
+            print("Sleeping 15s...")
             sleep(15.1)
 
 

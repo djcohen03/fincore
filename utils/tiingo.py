@@ -1,5 +1,5 @@
-import urllib
-import StringIO
+import urllib.request, urllib.parse, urllib.error
+import io
 import requests
 import datetime
 import pandas as pd
@@ -20,7 +20,7 @@ class TiingoClient(object):
         '''
         #
         today = str(datetime.date.today())
-        params = urllib.urlencode({
+        params = urllib.parse.urlencode({
             'startDate': today,
             'resampleFreq': '1min',
             'columns': 'open,high,low,close,volume',
@@ -34,7 +34,7 @@ class TiingoClient(object):
         response = requests.get(url, headers=self.headers)
 
         # Convert the CSV-formatted response into a pandas dataframe:
-        prices = pd.read_csv(StringIO.StringIO(response.text))
+        prices = pd.read_csv(io.StringIO(response.text))
         prices['timestamp'] = prices.date.map(lambda x: datetime.datetime.strptime(x[:-7], '%Y-%m-%d %H:%M:%S'))
         prices.index = prices.timestamp
         prices.sort_index(inplace=True)
@@ -63,4 +63,4 @@ class TiingoClient(object):
 
 if __name__ == '__main__':
     client = TiingoClient('d5b3bc41258b712303dcce5b484bee731facfdb6')
-    print client.getlive('AAPL')
+    print(client.getlive('AAPL'))

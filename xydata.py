@@ -1,13 +1,11 @@
 import time
 import random
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import traceback
 import pandas as pd
 import numpy as np
-from db.models import *
-from splits import Splits
-from tiingo import TiingoClient
-from livepoint import LivePoint
+from .db.models import *
+from .utils import Splits, TiingoClient, LivePoint
 
 # Set pandas dataframe column widths:
 pd.set_option('display.expand_frame_repr', False)
@@ -112,7 +110,7 @@ class LiveXYData(object):
         '''
         '''
         try:
-            from api_key import TIINGO
+            from .api_key import TIINGO
             return TIINGO
         except ImportError:
             raise Exception('No Tiingo API Key Provided')
@@ -124,11 +122,11 @@ class LiveXYData(object):
             sleeptime = self._timetonext(buffer=buffer)
             time.sleep(sleeptime)
             try:
-                print 'Fetching Live Data...'
+                print('Fetching Live Data...')
                 yield self.getlive()
             except Exception as e:
-                print 'An Exception Occurred Getting Live Data Point: "%s" (Skipping...)' % e
-                print traceback.format_exc()
+                print('An Exception Occurred Getting Live Data Point: "%s" (Skipping...)' % e)
+                print(traceback.format_exc())
 
     def _timetonext(self, buffer=0.0):
         ''' Time to the next minute marker
@@ -150,7 +148,7 @@ class LiveXYData(object):
             if attempt < maxtries:
                 sleeptime = 2 ** attempt
                 attempt += 1
-                print 'Warning: Re-Fetching Live Data (Attempt %s, Sleeping %ss)...' % (attempt, sleeptime)
+                print('Warning: Re-Fetching Live Data (Attempt %s, Sleeping %ss)...' % (attempt, sleeptime))
                 time.sleep(sleeptime)
                 return self.getlive(attempt=attempt)
             else:
@@ -201,5 +199,5 @@ if __name__ == '__main__':
     data = LiveXYData('AAPL')
 
     for point in data.livestream():
-        print point.inputs
-        print point.timesince
+        print(point.inputs)
+        print(point.timesince)

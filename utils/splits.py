@@ -21,7 +21,7 @@ class Splits(object):
 
         # Get the count of number of training items:
         count = int(self.count * self.split)
-        print 'Splitting: %s/%s Training/Testing Data Points' % (count, self.count - count)
+        print('Splitting: %s/%s Training/Testing Data Points' % (count, self.count - count))
 
         # Do Random Splitting:
         trainindex = sorted(random.sample(self._index, count))
